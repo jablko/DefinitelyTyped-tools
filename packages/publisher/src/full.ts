@@ -51,7 +51,7 @@ export default async function full(
   const changedPackages = await calculateVersions(dt, infoClient, log);
   await generatePackages(dt, allPackages, changedPackages);
   await createSearchIndex(allPackages, infoClient);
-  await publishPackages(changedPackages, dry, githubAccessToken, fetcher);
+  await publishPackages(allPackages, changedPackages, dry, githubAccessToken, fetcher);
   await publishRegistry(dt, allPackages, dry, infoClient);
   await validate(dt);
 }
