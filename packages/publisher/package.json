@@ -11,7 +11,6 @@
     "@definitelytyped/retag": "^0.0.58-next.6",
     "@definitelytyped/typescript-versions": "^0.0.57",
     "@definitelytyped/utils": "^0.0.58-next.3",
-    "@octokit/graphql": "^4.5.6",
     "@octokit/rest": "^16.1.0",
     "adal-node": "^0.1.22",
     "applicationinsights": "^1.0.7",
@@ -28,7 +27,6 @@
   },
   "devDependencies": {
     "@types/fs-extra": "4.0.0",
-    "@types/libnpmsearch": "^2.0.1",
     "@types/mz": "^0.0.31",
     "@types/node": "^12.12.29",
     "@types/oboe": "^2.0.28",

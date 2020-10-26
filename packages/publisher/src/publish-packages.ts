@@ -1,6 +1,4 @@
 import applicationinsights = require("applicationinsights");
-import search = require("libnpmsearch");
-import { graphql } from "@octokit/graphql";
 import * as yargs from "yargs";
 
 import { defaultLocalOptions } from "./lib/common";
@@ -54,10 +52,8 @@ if (!module.parent) {
         log
       );
     } else {
-      const allPackages = await AllPackages.read(dt);
       await publishPackages(
-        allPackages,
-        await readChangedPackages(allPackages),
+        await readChangedPackages(await AllPackages.read(dt)),
         dry,
         process.env.GH_API_TOKEN || "",
         new Fetcher()
@@ -67,7 +63,6 @@ if (!module.parent) {
 }
 
 export default async function publishPackages(
-  allPackages: AllPackages,
   changedPackages: ChangedPackages,
   dry: boolean,
   githubAccessToken: string,
@@ -191,85 +186,6 @@ export default async function publishPackages(
     },
     cacheDirPath
   );
-
-  // Loop over the @types packages in npm and mark any that no longer
-  // exist in HEAD as deprecated.
-  let from = 0;
-  let objects;
-  do {
-    const opts = {
-      limit: 250,
-      from
-    };
-    objects = await search("@types", opts);
-    for (const { name: fullNpmName } of objects) {
-      const name = fullNpmName.slice("@types/".length);
-      // If they don't exist in the types directory or in
-      // notNeededPackages.json then mark them deprecated. Reference the
-      // commit/pull request that removed them.
-      if (!allPackages.tryGetLatestVersion(name) && !allPackages.getNotNeededPackage(name)) {
-        log(`Deprecating ${name}`);
-        const {
-          repository: {
-            ref: {
-              target: {
-                history: {
-                  nodes: [commit]
-                }
-              }
-            }
-          }
-        } = await graphql(
-          `
-            query($path: String!) {
-              repository(name: "DefinitelyTyped", owner: "DefinitelyTyped") {
-                ref(qualifiedName: "master") {
-                  target {
-                    ... on Commit {
-                      history(first: 1, path: $path) {
-                        nodes {
-                          associatedPullRequests(first: 1) {
-                            nodes {
-                              url
-                            }
-                          }
-                          messageHeadline
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          `,
-          {
-            headers: { authorization: `token ${githubAccessToken}` },
-            path: `types/${name}`
-          }
-        );
-        let deprecatedMessage;
-        if (commit) {
-          const {
-            associatedPullRequests: {
-              nodes: [pullRequest]
-            },
-            messageHeadline
-          } = commit;
-          deprecatedMessage = messageHeadline;
-          if (pullRequest) {
-            deprecatedMessage += ` (${pullRequest.url})`;
-          }
-        }
-        if (dry) {
-          log(`(dry) Skip deprecate removed package ${fullNpmName}`);
-        } else {
-          log(`Deprecating ${fullNpmName} with message: ${deprecatedMessage}`);
-          await client.deprecate(fullNpmName, "", deprecatedMessage);
-        }
-      }
-    }
-    from += objects.length;
-  } while (objects.length >= 250 && from <= 5000);
 
   await writeLog("publishing.md", logResult());
   console.log("Done!");
